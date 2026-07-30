@@ -10,6 +10,7 @@
 #include "pages/WeatherPage.h"
 #include "pages/ClaudeUsagePage.h"
 #include "pages/ClawMascotPage.h"
+#include "pages/MatrixRefresherPage.h"
 
 DisplayManager display;
 TouchButton touch;
@@ -20,6 +21,7 @@ ClockPage clockPage;
 WeatherPage weatherPage;
 ClaudeUsagePage claudeUsagePage(pcLink);
 ClawMascotPage clawMascotPage(pcLink);
+MatrixRefresherPage matrixPage;
 
 void setup() {
     pcLink.begin(115200); // Serial (USB CDC) is used both for the PC link and for logs
@@ -32,6 +34,7 @@ void setup() {
     pages.addPage(&weatherPage);
     pages.addPage(&claudeUsagePage);
     pages.addPage(&clawMascotPage);
+    pages.addPage(&matrixPage);
     pages.begin(display.tft());
 }
 

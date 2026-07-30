@@ -2,11 +2,12 @@
 
 [![Framework](https://img.shields.io/badge/Framework-Arduino_ESP32-blue.svg)](https://espressif.com)
 [![Hardware](https://img.shields.io/badge/Hardware-ESP32--C3_Supermini-orange.svg)](https://espressif.com)
+[![Enclosure](https://img.shields.io/badge/Enclosure-3D_Printed_Bambulab_P2S-purple.svg)](https://bambulab.com)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-An interactive, zero-flicker desktop companion monitor powered by an **ESP32-C3 Supermini**, an **ST7789 240x240 SPI display**, and a **TTP223 capacitive touch sensor**.
+An interactive, zero-flicker desktop companion monitor powered by an **ESP32-C3 Supermini**, an **ST7789 240x240 SPI display**, a **TTP223 capacitive touch sensor**, and a **3D-printed enclosure crafted on a Bambulab P2S**.
 
-Includes 4 customizable pages, zero-flicker differential rendering, Open-Meteo weather integration, and a Claude Code AI desktop mascot.
+Includes 5 customizable pages, zero-flicker differential rendering, Open-Meteo weather integration, Claude Code AI metrics, Matrix digital rain, Star Wars opening crawl credits, Pac-Man arcade action, and an AFK sleeping mascot mode.
 
 ---
 
@@ -17,15 +18,20 @@ Includes 4 customizable pages, zero-flicker differential rendering, Open-Meteo w
    * **Face 1 (Apple/Nike Duo-Color GIANT)**: Stacked size 10 digits with electric blue & coral theme.
    * **Face 2 (Classic Analog Chronograph)**: Zero-flicker 1-pixel differential hand erasing with sub-dials.
    * **Face 3 (Retro Striped)**: Cream & gold stacked numbers with `DD-MM-YYYY` date formatting.
-   * **Vector Weather Icons**: Sun ☀️, Cloud ☁️, Rain 🌧️, and Storm 🌩️ drawn with GFX primitives.
+   * **Vector Weather Icons**: Sun ☀️ / Moon 🌙 (day/night API detection), Cloud ☁️, Rain 🌧️, and Storm 🌩️ drawn with GFX primitives.
 2. **Dedicated Weather Page**:
    * Powered by **Open-Meteo API** (100% Free, **Zero API key required**).
-   * Displays temperature, a large **32x32px vector weather icon**, condition text, and relative humidity.
+   * Displays temperature, a large **32x32px vector weather icon**, condition text, relative humidity, and centered API credit.
 3. **Claude Code Usage**:
    * Token counter, session quota card, weekly quota card (`WEEKLY`), and status indicator in Anthropic Obsidian dark mode.
 4. **Claude AI Companion Mascot**:
    * Animated pixel-art robot mascot with speech bubble (*"Hola Alejo!"*), facial expressions, and touch-petted heart reaction (`<3 PURR! <3`).
-5. **Wi-Fi Captive Portal & AP Web Server**:
+5. **Matrix Rain, Star Wars Credits & Arcade Page**:
+   * **Mode 0 (Matrix Rain)**: 60fps green digital rain screen refresher.
+   * **Mode 1 (Star Wars Opening Crawl)**: Custom Star Wars intro sequence with twinkling starfield, yellow credits crawl, and project backstory.
+   * **Mode 2 (Pac-Man Arcade)**: Classic Pac-Man animation with ghost color cycling (Blinky 🔴, Pinky 💖, Inky 💙, Clyde 🧡).
+   * **Mode 3 (AFK Sleep Mode)**: Cozy 3D-styled pixel art bedroom with Claude mascot sleeping in a wooden bed with floating `Zzz` animation.
+6. **Wi-Fi Captive Portal & AP Web Server**:
    * Hotspot AP `Companion-Setup` on `http://192.168.4.1` with NVS Flash memory storage for easy Wi-Fi configuration via mobile phone or laptop.
 
 ---

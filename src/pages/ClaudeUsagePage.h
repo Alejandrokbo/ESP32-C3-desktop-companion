@@ -2,7 +2,7 @@
 #include "../core/Page.h"
 #include "../core/PcLink.h"
 
-// Claude Code Quotas & Rate Limits Page (Full-Width Stacked Progress Bars).
+// Claude Code Quotas & Rate Limits Page (Giant Text & Thick Stacked Progress Bars).
 // Zero-flicker differential text rendering with Spanish localization and "Reset:" labels.
 class ClaudeUsagePage : public Page {
 public:
@@ -28,7 +28,7 @@ public:
 
         bool online = _link.isOnline();
 
-        // 1. Status Bar
+        // 1. Status Line (Giant Size 2)
         String status = online ? _link.claudeStatus() : "Desconectado";
         if (status != _prevStatus) {
             _prevStatus = status;
@@ -36,16 +36,15 @@ public:
                                ((status == "Coding..." || status == "Programando...") ? COLOR_TERRACOTTA : 
                                ((status == "Thinking..." || status == "Pensando...") ? COLOR_LAVENDER : COLOR_AMBER));
             
-            tft.fillCircle(20, 41, 3, dotColor);
+            tft.fillCircle(14, 37, 4, dotColor);
             tft.setTextColor(dotColor, COLOR_BG);
-            tft.setTextSize(1);
-            tft.setCursor(72, 38);
+            tft.setTextSize(2);
+            tft.setCursor(24, 30);
             tft.print(status);
-            // Pad spaces if string shortened
-            for (int i = status.length(); i < 16; i++) tft.print(" ");
+            for (int i = status.length(); i < 14; i++) tft.print(" ");
         }
 
-        // 2. Tokens Spent Value
+        // 2. Tokens Spent Value (Giant Size 4)
         uint32_t tokens = _link.claudeTokens();
         if (tokens != _prevTokens) {
             _prevTokens = tokens;
@@ -60,21 +59,23 @@ public:
 
             tft.setTextColor(COLOR_CREAM, COLOR_BG);
             tft.setTextSize(3);
-            tft.setCursor(18, 64);
+            tft.setCursor(12, 60);
             tft.print(tokStr);
-            for (int i = strlen(tokStr); i < 10; i++) tft.print(" ");
+            for (int i = strlen(tokStr); i < 8; i++) tft.print(" ");
         }
 
-        // 3. Card 1: 5-Hour / Session Quota Bar (Stacked Top)
-        _updateQuotaCard(tft, 12, 98, 216, 64,
+        // 3. Card 1: 5-Hour / Session Quota Bar (Giant Stacked Top)
+        _updateQuotaCard(tft, 8, 92, 224, 68,
+                          "SESION",
                           _link.claude5hPct(), 
                           _link.claude5hReset(), 
                           COLOR_TERRACOTTA,
                           _prev5hPct,
                           _prev5hReset);
 
-        // 4. Card 2: Weekly Quota Bar (Stacked Bottom)
-        _updateQuotaCard(tft, 12, 168, 216, 64,
+        // 4. Card 2: Weekly Quota Bar (Giant Stacked Bottom)
+        _updateQuotaCard(tft, 8, 164, 224, 68,
+                          "SEMANAL",
                           _link.claudeWeekPct(), 
                           _link.claudeWeekReset(), 
                           COLOR_LAVENDER,
@@ -110,69 +111,65 @@ private:
         tft.fillScreen(COLOR_BG);
 
         // Header Title Bar
-        tft.fillRect(0, 0, 240, 26, COLOR_HEADER);
+        tft.fillRect(0, 0, 240, 24, COLOR_HEADER);
         tft.setTextColor(COLOR_CREAM);
         tft.setTextSize(2);
-        tft.setCursor(45, 5);
+        tft.setCursor(54, 4);
         tft.print("CLAUDE CODE");
-        tft.fillRect(0, 26, 240, 2, COLOR_TERRACOTTA);
-
-        // Status Label
-        tft.setTextColor(COLOR_MUTED, COLOR_BG);
-        tft.setTextSize(1);
-        tft.setCursor(28, 38);
-        tft.print("ESTADO:");
+        tft.fillRect(0, 24, 240, 2, COLOR_TERRACOTTA);
 
         // Tokens Spent Label
-        tft.setCursor(18, 52);
+        tft.setTextColor(COLOR_MUTED, COLOR_BG);
+        tft.setTextSize(1);
+        tft.setCursor(12, 48);
         tft.print("TOKENS USADOS");
 
         // Full-Width Stacked Card Wireframes
-        _drawCardWireframe(tft, 12, 98, 216, 64, "SESION", COLOR_TERRACOTTA);
-        _drawCardWireframe(tft, 12, 168, 216, 64, "SEMANAL", COLOR_LAVENDER);
+        _drawCardWireframe(tft, 8, 92, 224, 68, "SESION", COLOR_TERRACOTTA);
+        _drawCardWireframe(tft, 8, 164, 224, 68, "SEMANAL", COLOR_LAVENDER);
     }
 
     void _drawCardWireframe(Adafruit_ST7789 &tft, int x, int y, int w, int h, const char *title, uint16_t accentColor) {
         tft.fillRoundRect(x, y, w, h, 6, COLOR_CARD);
         tft.drawRoundRect(x, y, w, h, 6, COLOR_HEADER);
 
-        // Card Title (Left)
+        // Card Title (Size 2)
         tft.setTextColor(accentColor, COLOR_CARD);
-        tft.setTextSize(1);
+        tft.setTextSize(2);
         tft.setCursor(x + 10, y + 8);
         tft.print(title);
 
-        // Progress bar track
-        tft.drawRoundRect(x + 10, y + 26, w - 20, 12, 3, COLOR_TRACK);
+        // Progress bar track (Thick 14px)
+        tft.drawRoundRect(x + 10, y + 28, w - 20, 14, 3, COLOR_TRACK);
 
-        // Reset: label (Changed from Rein: to Reset:)
+        // Reset: label (Size 1)
         tft.setTextColor(COLOR_MUTED, COLOR_CARD);
         tft.setTextSize(1);
-        tft.setCursor(x + 10, y + 46);
+        tft.setCursor(x + 10, y + 48);
         tft.print("Reset:");
     }
 
     void _updateQuotaCard(Adafruit_ST7789 &tft, int x, int y, int w, int h,
-                           float pct, const String &resetStr, uint16_t accentColor,
+                           const char *title, float pct, const String &resetStr, uint16_t accentColor,
                            float &prevPct, String &prevResetStr) {
         pct = pct < 0.0f ? 0.0f : (pct > 100.0f ? 100.0f : pct);
 
-        // Update Percentage Label (% USADO) at Top-Right
+        // Update Percentage Label (% USADO) in Size 2 at Top-Right
         if (pct != prevPct) {
             char pctBuf[16];
-            snprintf(pctBuf, sizeof(pctBuf), "%.0f%% USADO", pct);
+            snprintf(pctBuf, sizeof(pctBuf), "%.0f%%", pct);
             
             tft.setTextColor(COLOR_CREAM, COLOR_CARD);
-            tft.setTextSize(1);
-            int txtX = (x + w - 10) - ((int)strlen(pctBuf) * 6);
+            tft.setTextSize(2);
+            int txtX = (x + w - 10) - ((int)strlen(pctBuf) * 12);
             tft.setCursor(txtX, y + 8);
             tft.print(pctBuf);
 
-            // Fill Progress Bar
+            // Fill Progress Bar (Thick 14px)
             int barX = x + 10;
-            int barY = y + 26;
+            int barY = y + 28;
             int barW = w - 20;
-            int barH = 12;
+            int barH = 14;
 
             int fillW = (int)((barW - 4) * (pct / 100.0f));
             tft.fillRect(barX + 2, barY + 2, barW - 4, barH - 4, COLOR_CARD);
@@ -182,12 +179,12 @@ private:
             prevPct = pct;
         }
 
-        // Update Reset Countdown Label
+        // Update Reset Countdown Label in Size 1
         if (resetStr != prevResetStr) {
             prevResetStr = resetStr;
             tft.setTextColor(COLOR_CREAM, COLOR_CARD);
             tft.setTextSize(1);
-            tft.setCursor(x + 50, y + 46);
+            tft.setCursor(x + 52, y + 48);
             tft.print(resetStr);
             for (int i = resetStr.length(); i < 12; i++) tft.print(" ");
         }

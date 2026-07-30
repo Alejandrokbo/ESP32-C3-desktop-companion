@@ -105,19 +105,21 @@ private:
                       OWM_LAT + "&longitude=" + OWM_LON +
                       "&current=temperature_2m,weather_code,is_day";
 
+        http.useHTTP10(true);
         http.setTimeout(10000);
         http.setUserAgent("Mozilla/5.0 (ESP32-C3)");
         http.begin(url);
         int code = http.GET();
 
         if (code == 200) {
+            String payload = http.getString();
             JsonDocument doc;
-            if (!deserializeJson(doc, http.getString())) {
+            if (!deserializeJson(doc, payload)) {
                 _weatherTemp = doc["current"]["temperature_2m"].as<float>();
                 _weatherCode = doc["current"]["weather_code"].as<int>();
                 _isDay = doc["current"]["is_day"].as<int>() == 1;
 
-                if (_weatherCode == 0) _weatherCond = _isDay ? "Despejado" : "Noche Clara";
+                if (_weatherCode == 0) _weatherCond = "Despejado";
                 else if (_weatherCode >= 1 && _weatherCode <= 3) _weatherCond = "Nublado";
                 else if (_weatherCode == 45 || _weatherCode == 48) _weatherCond = "Niebla";
                 else if (_weatherCode >= 51 && _weatherCode <= 67) _weatherCond = "Lluvia";
@@ -229,7 +231,7 @@ private:
     }
 
     // -----------------------------------------------------------------------
-    // FACE 1: Apple / Nike Giant Bold Duo-Color + Weather Icon
+    // FACE 1: Apple / Nike Giant Bold Duo-Color + Larger Weather Icon & Text
     // -----------------------------------------------------------------------
     void _drawGiantBoldDuoColor(Adafruit_ST7789 &tft, const struct tm &tmNow) {
         char hrStr[4], minStr[4];
@@ -250,20 +252,20 @@ private:
         tft.setCursor(minX, 115);
         tft.print(minStr);
 
-        // Weather Badge Footer with Icon (Separated X margin)
+        // Weather Badge Footer in Size 2 (Larger!)
         String wStr = _getWeatherSummaryStr();
         if (wStr.length() > 0) {
-            int wX = (240 - (((int)wStr.length() * 6) + 20)) / 2;
+            int wX = (240 - (((int)wStr.length() * 12) + 20)) / 2;
             _drawWeatherIcon(tft, wX, 222);
             tft.setTextColor(COLOR_CREAM, ST77XX_BLACK);
-            tft.setTextSize(1);
-            tft.setCursor(wX + 20, 222);
+            tft.setTextSize(2);
+            tft.setCursor(wX + 20, 220);
             tft.print(wStr);
         }
     }
 
     // -----------------------------------------------------------------------
-    // FACE 2: Classic Analog Chronograph + Weather Complication Icon
+    // FACE 2: Classic Analog Chronograph + Weather Icon & Temp ONLY (Size 2)
     // -----------------------------------------------------------------------
     void _drawAnalogChronograph(Adafruit_ST7789 &tft, const struct tm &tmNow) {
         int cx = 120, cy = 120, r = 105;
@@ -299,15 +301,16 @@ private:
             tft.setCursor(mX, 117);
             tft.print(dateTxt);
 
-            // Weather Complication with Icon at Bottom Arc (Separated X margin)
-            String wStr = _getWeatherSummaryStr();
-            if (wStr.length() > 0) {
-                int wX = 120 - ((((int)wStr.length() * 6) + 20) / 2);
+            // Weather Complication: Icon + Temp ONLY in Size 2 (Gold)
+            if (_hasWeather) {
+                char tempStr[16];
+                snprintf(tempStr, sizeof(tempStr), "%.1fC", _weatherTemp);
+                int wX = 120 - ((((int)strlen(tempStr) * 12) + 20) / 2);
                 _drawWeatherIcon(tft, wX, 175);
                 tft.setTextColor(COLOR_GOLD);
-                tft.setTextSize(1);
-                tft.setCursor(wX + 20, 175);
-                tft.print(wStr);
+                tft.setTextSize(2);
+                tft.setCursor(wX + 20, 173);
+                tft.print(tempStr);
             }
 
             _prevSx = _prevSy = -1;
@@ -347,7 +350,7 @@ private:
     }
 
     // -----------------------------------------------------------------------
-    // FACE 3: Retro Striped / Art Deco Stacked + Weather Icon Footer
+    // FACE 3: Retro Striped / Art Deco Stacked + Larger Weather Icon & Text
     // -----------------------------------------------------------------------
     void _drawRetroStriped(Adafruit_ST7789 &tft, const struct tm &tmNow) {
         char hrStr[4], minStr[4];
@@ -378,14 +381,14 @@ private:
         tft.setCursor(dateX, 182);
         tft.print(dateStr);
 
-        // Weather Footer with Icon (Separated X margin)
+        // Weather Footer in Size 2 (Larger!)
         String wStr = _getWeatherSummaryStr();
         if (wStr.length() > 0) {
-            int wX = (240 - (((int)wStr.length() * 6) + 20)) / 2;
+            int wX = (240 - (((int)wStr.length() * 12) + 20)) / 2;
             _drawWeatherIcon(tft, wX, 215);
             tft.setTextColor(COLOR_GREEN, ST77XX_BLACK);
-            tft.setTextSize(1);
-            tft.setCursor(wX + 20, 215);
+            tft.setTextSize(2);
+            tft.setCursor(wX + 20, 213);
             tft.print(wStr);
         }
     }

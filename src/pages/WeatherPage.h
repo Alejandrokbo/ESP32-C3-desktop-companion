@@ -6,7 +6,7 @@
 #include <ArduinoJson.h>
 
 // Weather page with automatic Open-Meteo fallback (100% FREE, Zero API Key required).
-// Shows big weather icon (Sun/Moon) + temperature + condition in Spanish + humidity.
+// Shows big weather icon (Sun/Moon) + temperature + condition in Spanish + humidity + centered Open-Meteo API credit.
 class WeatherPage : public Page {
 public:
     const char *name() const override { return "El Tiempo"; }
@@ -49,17 +49,18 @@ private:
                       "&current=temperature_2m,relative_humidity_2m,weather_code,is_day";
 
         Serial.println("[WeatherPage] Fetching weather from Open-Meteo...");
-        http.setTimeout(10000); // 10s timeout to prevent -11 read timeouts
+        http.useHTTP10(true); // Disable Chunked Transfer Encoding for clean HTTP 1.0 JSON response
+        http.setTimeout(10000);
         http.setUserAgent("Mozilla/5.0 (ESP32-C3)");
         http.begin(url);
         
         int code = http.GET();
         Serial.printf("[WeatherPage] Open-Meteo HTTP code: %d\n", code);
 
-        // Quick retry if transient network timeout (-11)
         if (code < 0) {
             http.end();
             delay(500);
+            http.useHTTP10(true);
             http.begin(url);
             http.setTimeout(10000);
             http.setUserAgent("Mozilla/5.0 (ESP32-C3)");
@@ -74,9 +75,11 @@ private:
             return true;
         }
 
-        JsonDocument doc;
-        DeserializationError err = deserializeJson(doc, http.getString());
+        String payload = http.getString();
         http.end();
+
+        JsonDocument doc;
+        DeserializationError err = deserializeJson(doc, payload);
 
         if (err) {
             Serial.println("[WeatherPage] JSON Parse error!");
@@ -91,7 +94,7 @@ private:
         _isDay = doc["current"]["is_day"].as<int>() == 1;
 
         // Translate WMO Weather Code to Spanish
-        if (_wCode == 0) _condition = _isDay ? "Despejado" : "Noche Clara";
+        if (_wCode == 0) _condition = "Despejado";
         else if (_wCode >= 1 && _wCode <= 3) _condition = "Nublado";
         else if (_wCode == 45 || _wCode == 48) _condition = "Niebla";
         else if (_wCode >= 51 && _wCode <= 67) _condition = "Lluvia";
@@ -138,82 +141,74 @@ private:
             tft.drawLine(x + 16, y + 23, x + 13, y + 28, 0x07FF);
             tft.drawLine(x + 23, y + 23, x + 20, y + 28, 0x07FF);
         } else if (_wCode >= 95) {
-            // Storm Icon (Cloud + Yellow Lightning)
+            // Storm Icon (Cloud + Lightning)
             tft.fillCircle(x + 10, y + 10, 7, 0xD67A);
             tft.fillCircle(x + 20, y + 8, 9, 0xD67A);
             tft.fillRect(x + 5, y + 12, 20, 7, 0xD67A);
-            tft.drawLine(x + 18, y + 20, x + 12, y + 25, ST77XX_YELLOW);
-            tft.drawLine(x + 12, y + 25, x + 16, y + 29, ST77XX_YELLOW);
+            tft.drawLine(x + 18, y + 20, x + 12, y + 26, ST77XX_YELLOW);
+            tft.drawLine(x + 12, y + 26, x + 16, y + 29, ST77XX_YELLOW);
         } else {
-            // Fluffy Cloud Icon (Nublado)
-            tft.fillCircle(x + 10, y + 14, 8, 0xD67A);
-            tft.fillCircle(x + 20, y + 11, 10, 0xD67A);
-            tft.fillRect(x + 5, y + 15, 22, 8, 0xD67A);
+            // Cloud Icon (Cloud)
+            tft.fillCircle(x + 10, y + 12, 7, 0xD67A);
+            tft.fillCircle(x + 20, y + 10, 9, 0xD67A);
+            tft.fillRect(x + 5, y + 14, 20, 8, 0xD67A);
         }
     }
 
     void _drawData(Adafruit_ST7789 &tft) {
-        tft.fillRect(0, 0, 240, 240, ST77XX_BLACK);
-        tft.setTextColor(ST77XX_WHITE);
-
-        if (!NetManager::isConnected()) {
-            tft.setTextSize(2);
-            tft.setCursor(60, 110);
-            tft.setTextColor(ST77XX_RED);
-            tft.print("Sin Wi-Fi");
-            return;
-        }
+        tft.fillScreen(ST77XX_BLACK);
 
         if (!_haveData) {
+            tft.setTextColor(ST77XX_RED);
             tft.setTextSize(2);
-            tft.setCursor(50, 110);
-            if (!_errorMsg.isEmpty()) {
-                tft.setTextColor(ST77XX_RED);
-                tft.print(_errorMsg);
-            } else {
-                tft.setTextColor(0xFBE0);
-                tft.print("Cargando...");
-            }
+            tft.setCursor(30, 110);
+            tft.print(_errorMsg.isEmpty() ? "Cargando..." : _errorMsg);
             return;
         }
 
-        // 1. Temperature (Centered X, Green)
-        char tempStr[16];
-        snprintf(tempStr, sizeof(tempStr), "%.1f%s",
-                  _tempC, (strcmp(OWM_UNITS, "metric") == 0) ? "C" : "F");
+        // 32x32px Big Weather Icon (Centered at X=104, Y=25)
+        _drawBigWeatherIcon(tft, 104, 25);
 
-        int tempX = (240 - ((int)strlen(tempStr) * 24)) / 2;
-        tft.setTextColor(0x07E0); // Electric Green
+        // Main Temperature in Electric Green (Centered)
+        char tempBuf[16];
+        snprintf(tempBuf, sizeof(tempBuf), "%.1f C", _tempC);
+        int tX = (240 - ((int)strlen(tempBuf) * 24)) / 2;
+        tft.setTextColor(0x07E0);
         tft.setTextSize(4);
-        tft.setCursor(tempX, 35);
-        tft.print(tempStr);
+        tft.setCursor(tX, 75);
+        tft.print(tempBuf);
 
-        // 2. Large Weather Icon (32x32px centered at x = 104)
-        _drawBigWeatherIcon(tft, 104, 85);
-
-        // 3. Condition (Centered X, White)
-        int condX = (240 - ((int)_condition.length() * 12)) / 2;
-        tft.setTextColor(ST77XX_WHITE);
+        // Condition string in Spanish (Centered)
+        int cX = (240 - ((int)_condition.length() * 12)) / 2;
+        tft.setTextColor(ST77XX_CYAN);
         tft.setTextSize(2);
-        tft.setCursor(condX, 135);
+        tft.setCursor(cX, 125);
         tft.print(_condition);
 
-        // 4. Humidity (Centered X, Muted Grey)
-        char humStr[24];
-        snprintf(humStr, sizeof(humStr), "Humedad: %d%%", _humidity);
-        int humX = (240 - ((int)strlen(humStr) * 12)) / 2;
-        tft.setTextColor(0x8410); // Muted Grey
+        // Humidity in Bright White Size 2 (Centered)
+        char humBuf[20];
+        snprintf(humBuf, sizeof(humBuf), "Humedad: %d%%", _humidity);
+        int hX = (240 - ((int)strlen(humBuf) * 12)) / 2;
+        tft.setTextColor(ST77XX_WHITE);
         tft.setTextSize(2);
-        tft.setCursor(humX, 180);
-        tft.print(humStr);
+        tft.setCursor(hX, 165);
+        tft.print(humBuf);
+
+        // Footer note: Centered Open-Meteo API credit
+        const char *credit = "Open-Meteo API";
+        int oX = (240 - ((int)strlen(credit) * 6)) / 2;
+        tft.setTextColor(0x5AD6);
+        tft.setTextSize(1);
+        tft.setCursor(oX, 210);
+        tft.print(credit);
     }
 
     uint32_t _lastFetchMs = 0;
     bool _haveData = false;
-    float _tempC = 0;
+    float _tempC = 0.0f;
     int _humidity = 0;
     int _wCode = 0;
     bool _isDay = true;
-    String _condition;
-    String _errorMsg;
+    String _condition = "Cargando...";
+    String _errorMsg = "";
 };
