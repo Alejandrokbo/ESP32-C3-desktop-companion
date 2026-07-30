@@ -4,10 +4,7 @@
 
 // Reads newline-delimited JSON from Serial (USB CDC), sent by the
 // pc-agent/companion_agent.py script. Expected line shape:
-//   {"cpu":23.4,"ram":51.2,"gpu":12.0,"gpu_temp":54.0}
-// Any subset of fields is fine; missing fields keep their last known value.
-// If nothing is received for STALE_MS, isOnline() goes false so pages can
-// show a "PC offline" state instead of frozen numbers.
+//   {"claude_tokens":142500,"claude_5h_pct":23.0,"claude_5h_reset":"29m",...}
 class PcLink {
 public:
     void begin(unsigned long baud = 115200) {
@@ -40,20 +37,20 @@ public:
     String clawMood() const { return _clawMood; }
 
 private:
-    static constexpr uint32_t STALE_MS = 5000;
+    static constexpr uint32_t STALE_MS = 10000;
 
     void _parseLine(const String &line) {
         if (line.isEmpty()) return;
         JsonDocument doc;
         if (deserializeJson(doc, line) != DeserializationError::Ok) return;
 
-        if (doc["claude_tokens"].is<uint32_t>()) _claudeTokens = doc["claude_tokens"].as<uint32_t>();
-        if (doc["claude_5h_pct"].is<float>()) _claude5hPct = doc["claude_5h_pct"].as<float>();
-        if (doc["claude_5h_reset"].is<const char*>()) _claude5hReset = doc["claude_5h_reset"].as<String>();
-        if (doc["claude_week_pct"].is<float>()) _claudeWeekPct = doc["claude_week_pct"].as<float>();
-        if (doc["claude_week_reset"].is<const char*>()) _claudeWeekReset = doc["claude_week_reset"].as<String>();
-        if (doc["claude_status"].is<const char*>()) _claudeStatus = doc["claude_status"].as<String>();
-        if (doc["claw_mood"].is<const char*>()) _clawMood = doc["claw_mood"].as<String>();
+        if (!doc["claude_tokens"].isNull()) _claudeTokens = doc["claude_tokens"].as<uint32_t>();
+        if (!doc["claude_5h_pct"].isNull()) _claude5hPct = doc["claude_5h_pct"].as<float>();
+        if (!doc["claude_5h_reset"].isNull()) _claude5hReset = doc["claude_5h_reset"].as<String>();
+        if (!doc["claude_week_pct"].isNull()) _claudeWeekPct = doc["claude_week_pct"].as<float>();
+        if (!doc["claude_week_reset"].isNull()) _claudeWeekReset = doc["claude_week_reset"].as<String>();
+        if (!doc["claude_status"].isNull()) _claudeStatus = doc["claude_status"].as<String>();
+        if (!doc["claw_mood"].isNull()) _clawMood = doc["claw_mood"].as<String>();
 
         _lastRxMs = millis();
     }
@@ -61,9 +58,9 @@ private:
     String _lineBuf;
     uint32_t _lastRxMs = 0;
 
-    uint32_t _claudeTokens = 0;
+    uint32_t _claudeTokens = 142500;
     float _claude5hPct = 23.0f;
-    String _claude5hReset = "2h 15m";
+    String _claude5hReset = "29m";
     float _claudeWeekPct = 17.0f;
     String _claudeWeekReset = "4d 22h";
     String _claudeStatus = "Idle";

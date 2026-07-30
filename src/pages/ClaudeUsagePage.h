@@ -20,27 +20,13 @@ public:
         if (now - _lastDrawMs < REDRAW_INTERVAL_MS) return;
         _lastDrawMs = now;
 
-        if (!_link.isOnline()) {
-            if (_wasOnline) {
-                _drawStaticLayout(tft);
-                tft.setTextColor(COLOR_TERRACOTTA);
-                tft.setTextSize(2);
-                tft.setCursor(40, 110);
-                tft.print("Sin conexion");
-                _wasOnline = false;
-            }
-            return;
-        }
+        bool online = _link.isOnline();
 
-        if (!_wasOnline) {
-            _drawStaticLayout(tft);
-            _wasOnline = true;
-        }
-
-        // 1. Status Bar (Update only text & dot)
-        String status = _link.claudeStatus();
-        uint16_t dotColor = (status == "Coding..." || status == "Programando...") ? COLOR_TERRACOTTA : 
-                           ((status == "Thinking..." || status == "Pensando...") ? COLOR_LAVENDER : COLOR_AMBER);
+        // 1. Status Bar (Update text & dot)
+        String status = online ? _link.claudeStatus() : "Desconectado";
+        uint16_t dotColor = !online ? COLOR_MUTED :
+                           ((status == "Coding..." || status == "Programando...") ? COLOR_TERRACOTTA : 
+                           ((status == "Thinking..." || status == "Pensando...") ? COLOR_LAVENDER : COLOR_AMBER));
         
         tft.fillCircle(22, 42, 3, dotColor);
         tft.fillRect(76, 39, 140, 12, COLOR_BG);
@@ -97,7 +83,6 @@ private:
 
     PcLink &_link;
     uint32_t _lastDrawMs = 0;
-    bool _wasOnline = false;
 
     void _drawStaticLayout(Adafruit_ST7789 &tft) {
         tft.fillScreen(COLOR_BG);
