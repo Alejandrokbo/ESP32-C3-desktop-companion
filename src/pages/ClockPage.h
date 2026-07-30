@@ -7,7 +7,7 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
-// Clock page with 4 Watch Faces and integrated Weather complications + Vector Icons.
+// Clock page with 4 Watch Faces and integrated Weather complications + Vector Icons (Sun/Moon).
 // Long-press cycles between Watch Face styles with zero flicker.
 class ClockPage : public Page {
 public:
@@ -78,6 +78,7 @@ private:
     bool _hasWeather = false;
     float _weatherTemp = 0.0f;
     int _weatherCode = 0;
+    bool _isDay = true;
     String _weatherCond;
 
     // Palette
@@ -102,7 +103,7 @@ private:
         HTTPClient http;
         String url = String("http://api.open-meteo.com/v1/forecast?latitude=") +
                       OWM_LAT + "&longitude=" + OWM_LON +
-                      "&current=temperature_2m,weather_code";
+                      "&current=temperature_2m,weather_code,is_day";
 
         http.setTimeout(10000);
         http.setUserAgent("Mozilla/5.0 (ESP32-C3)");
@@ -114,8 +115,9 @@ private:
             if (!deserializeJson(doc, http.getString())) {
                 _weatherTemp = doc["current"]["temperature_2m"].as<float>();
                 _weatherCode = doc["current"]["weather_code"].as<int>();
+                _isDay = doc["current"]["is_day"].as<int>() == 1;
 
-                if (_weatherCode == 0) _weatherCond = "Despejado";
+                if (_weatherCode == 0) _weatherCond = _isDay ? "Despejado" : "Noche Clara";
                 else if (_weatherCode >= 1 && _weatherCode <= 3) _weatherCond = "Nublado";
                 else if (_weatherCode == 45 || _weatherCode == 48) _weatherCond = "Niebla";
                 else if (_weatherCode >= 51 && _weatherCode <= 67) _weatherCond = "Lluvia";
@@ -134,12 +136,18 @@ private:
         if (!_hasWeather) return;
 
         if (_weatherCode == 0) {
-            // Sun Icon (Yellow circle + 4 rays)
-            tft.fillCircle(x + 6, y + 6, 4, ST77XX_YELLOW);
-            tft.drawLine(x + 6, y, x + 6, y + 2, ST77XX_YELLOW);
-            tft.drawLine(x + 6, y + 10, x + 6, y + 12, ST77XX_YELLOW);
-            tft.drawLine(x, y + 6, x + 2, y + 6, ST77XX_YELLOW);
-            tft.drawLine(x + 10, y + 6, x + 12, y + 6, ST77XX_YELLOW);
+            if (_isDay) {
+                // Sun Icon ☀️ (Yellow circle + 4 rays)
+                tft.fillCircle(x + 6, y + 6, 4, ST77XX_YELLOW);
+                tft.drawLine(x + 6, y, x + 6, y + 2, ST77XX_YELLOW);
+                tft.drawLine(x + 6, y + 10, x + 6, y + 12, ST77XX_YELLOW);
+                tft.drawLine(x, y + 6, x + 2, y + 6, ST77XX_YELLOW);
+                tft.drawLine(x + 10, y + 6, x + 12, y + 6, ST77XX_YELLOW);
+            } else {
+                // Crescent Moon Icon 🌙 (Gold circle + cutout)
+                tft.fillCircle(x + 6, y + 6, 5, COLOR_GOLD);
+                tft.fillCircle(x + 8, y + 4, 5, ST77XX_BLACK);
+            }
         } else if (_weatherCode >= 51 && _weatherCode <= 67) {
             // Rain Icon (Cloud + Rain drops)
             tft.fillCircle(x + 4, y + 5, 3, 0xD67A);

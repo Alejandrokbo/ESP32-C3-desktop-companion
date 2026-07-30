@@ -6,7 +6,7 @@
 #include <ArduinoJson.h>
 
 // Weather page with automatic Open-Meteo fallback (100% FREE, Zero API Key required).
-// Shows big weather icon + temperature + condition in Spanish + humidity.
+// Shows big weather icon (Sun/Moon) + temperature + condition in Spanish + humidity.
 class WeatherPage : public Page {
 public:
     const char *name() const override { return "El Tiempo"; }
@@ -46,7 +46,7 @@ private:
         HTTPClient http;
         String url = String("http://api.open-meteo.com/v1/forecast?latitude=") +
                       OWM_LAT + "&longitude=" + OWM_LON +
-                      "&current=temperature_2m,relative_humidity_2m,weather_code";
+                      "&current=temperature_2m,relative_humidity_2m,weather_code,is_day";
 
         Serial.println("[WeatherPage] Fetching weather from Open-Meteo...");
         http.setTimeout(10000); // 10s timeout to prevent -11 read timeouts
@@ -88,9 +88,10 @@ private:
         _tempC = doc["current"]["temperature_2m"].as<float>();
         _humidity = doc["current"]["relative_humidity_2m"].as<int>();
         _wCode = doc["current"]["weather_code"].as<int>();
+        _isDay = doc["current"]["is_day"].as<int>() == 1;
 
         // Translate WMO Weather Code to Spanish
-        if (_wCode == 0) _condition = "Despejado";
+        if (_wCode == 0) _condition = _isDay ? "Despejado" : "Noche Clara";
         else if (_wCode >= 1 && _wCode <= 3) _condition = "Nublado";
         else if (_wCode == 45 || _wCode == 48) _condition = "Niebla";
         else if (_wCode >= 51 && _wCode <= 67) _condition = "Lluvia";
@@ -101,7 +102,7 @@ private:
 
         _haveData = true;
         _errorMsg = "";
-        Serial.printf("[WeatherPage] Success! Temp: %.1f C, Hum: %d%%, Cond: %s\n", _tempC, _humidity, _condition.c_str());
+        Serial.printf("[WeatherPage] Success! Temp: %.1f C, Hum: %d%%, Cond: %s, Day: %d\n", _tempC, _humidity, _condition.c_str(), _isDay);
         return true;
     }
 
@@ -109,17 +110,25 @@ private:
         if (!_haveData) return;
 
         if (_wCode == 0) {
-            // Sun Icon (Yellow circle + 8 rays)
-            tft.fillCircle(x + 16, y + 16, 10, ST77XX_YELLOW);
-            tft.drawLine(x + 16, y + 2, x + 16, y + 5, ST77XX_YELLOW);
-            tft.drawLine(x + 16, y + 27, x + 16, y + 30, ST77XX_YELLOW);
-            tft.drawLine(x + 2, y + 16, x + 5, y + 16, ST77XX_YELLOW);
-            tft.drawLine(x + 27, y + 16, x + 30, y + 16, ST77XX_YELLOW);
-            
-            tft.drawLine(x + 6, y + 6, x + 9, y + 9, ST77XX_YELLOW);
-            tft.drawLine(x + 23, y + 23, x + 26, y + 26, ST77XX_YELLOW);
-            tft.drawLine(x + 23, y + 6, x + 20, y + 9, ST77XX_YELLOW);
-            tft.drawLine(x + 6, y + 23, x + 9, y + 20, ST77XX_YELLOW);
+            if (_isDay) {
+                // Sun Icon ☀️ (Yellow circle + 8 rays)
+                tft.fillCircle(x + 16, y + 16, 10, ST77XX_YELLOW);
+                tft.drawLine(x + 16, y + 2, x + 16, y + 5, ST77XX_YELLOW);
+                tft.drawLine(x + 16, y + 27, x + 16, y + 30, ST77XX_YELLOW);
+                tft.drawLine(x + 2, y + 16, x + 5, y + 16, ST77XX_YELLOW);
+                tft.drawLine(x + 27, y + 16, x + 30, y + 16, ST77XX_YELLOW);
+                
+                tft.drawLine(x + 6, y + 6, x + 9, y + 9, ST77XX_YELLOW);
+                tft.drawLine(x + 23, y + 23, x + 26, y + 26, ST77XX_YELLOW);
+                tft.drawLine(x + 23, y + 6, x + 20, y + 9, ST77XX_YELLOW);
+                tft.drawLine(x + 6, y + 23, x + 9, y + 20, ST77XX_YELLOW);
+            } else {
+                // Crescent Moon Icon 🌙 (Gold circle + cutout + stars)
+                tft.fillCircle(x + 16, y + 16, 12, 0xFBE0);
+                tft.fillCircle(x + 21, y + 12, 11, ST77XX_BLACK);
+                tft.drawPixel(x + 6, y + 8, ST77XX_WHITE);
+                tft.drawPixel(x + 26, y + 24, ST77XX_WHITE);
+            }
         } else if (_wCode >= 51 && _wCode <= 67) {
             // Rain Icon (Cloud + 3 Cyan Rain Drops)
             tft.fillCircle(x + 10, y + 12, 7, 0xD67A);
@@ -204,6 +213,7 @@ private:
     float _tempC = 0;
     int _humidity = 0;
     int _wCode = 0;
+    bool _isDay = true;
     String _condition;
     String _errorMsg;
 };
