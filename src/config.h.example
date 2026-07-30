@@ -1,0 +1,15 @@
+#pragma once
+
+// Wi-Fi Configuration
+#define WIFI_SSID     "your-wifi-name"
+#define WIFI_PASSWORD "your-wifi-password"
+
+// Timezone offset (GMT+1 for Madrid/Spain)
+#define GMT_OFFSET_SEC      3600
+#define DAYLIGHT_OFFSET_SEC 3600
+#define NTP_SERVER          "pool.ntp.org"
+
+// Open-Meteo Weather Location Coordinates (e.g. Madrid, Spain)
+#define OWM_LAT "40.4168"
+#define OWM_LON "-3.7038"
+#define OWM_UNITS "metric"
