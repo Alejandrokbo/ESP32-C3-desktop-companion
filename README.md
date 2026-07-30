@@ -1,74 +1,80 @@
 # ESP32-C3 Desktop Companion Monitor
 
-ESP32-C3 Supermini + ST7789 240x240 SPI display + TTP223 capacitive touch module.
+[![Framework](https://img.shields.io/badge/Framework-Arduino_ESP32-blue.svg)](https://espressif.com)
+[![Hardware](https://img.shields.io/badge/Hardware-ESP32--C3_Supermini-orange.svg)](https://espressif.com)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-An interactive desktop companion with 4 pages, zero-flicker differential rendering, Open-Meteo weather integration, and Claude Code AI companion mascot.
+An interactive, zero-flicker desktop companion monitor powered by an **ESP32-C3 Supermini**, an **ST7789 240x240 SPI display**, and a **TTP223 capacitive touch sensor**.
+
+Includes 4 customizable pages, zero-flicker differential rendering, Open-Meteo weather integration, and a Claude Code AI desktop mascot.
 
 ---
 
-## 🚀 Features
+## 🌟 Key Features
 
-1. **Reloj (4 Esferas Intercambiables)**:
-   * **Esfera 0**: Digital minimalista con estado de Wi-Fi y clima.
-   * **Esfera 1 (Apple/Nike Duo-Color GIGANTE)**: Números apilados de tamaño 10 con badge del clima.
-   * **Esfera 2 (Cronógrafo Analógico)**: Manecillas analógicas sin parpadeo y sub-diales traducidos al español.
-   * **Esfera 3 (Retro Apilado)**: Números crema/dorado con fecha en formato `dd-mm-YYYY`.
-   * **Iconos Vectoriales del Clima**: Sol ☀️, Nube ☁️, Lluvia 🌧️ y Tormenta 🌩️ en todas las esferas.
-2. **El Tiempo Detallado**:
-   * API pública gratuita **Open-Meteo** (0 claves de API requeridas).
-   * Muestra temperatura en verde eléctrico, **icono vectorial gigante de 32x32px**, condición en español y humedad.
+1. **Clock (4 Customizable Watch Faces)**:
+   * **Face 0 (Minimal Digital)**: Clean digital layout with Wi-Fi status and weather complication.
+   * **Face 1 (Apple/Nike Duo-Color GIANT)**: Stacked size 10 digits with electric blue & coral theme.
+   * **Face 2 (Classic Analog Chronograph)**: Zero-flicker 1-pixel differential hand erasing with sub-dials.
+   * **Face 3 (Retro Striped)**: Cream & gold stacked numbers with `DD-MM-YYYY` date formatting.
+   * **Vector Weather Icons**: Sun ☀️, Cloud ☁️, Rain 🌧️, and Storm 🌩️ drawn with GFX primitives.
+2. **Dedicated Weather Page**:
+   * Powered by **Open-Meteo API** (100% Free, **Zero API key required**).
+   * Displays temperature, a large **32x32px vector weather icon**, condition text, and relative humidity.
 3. **Claude Code Usage**:
-   * Tokens consumidos, tarjetas de cuota de Sesión y Semanal con estética Anthropic Obsidian.
-4. **Mascota Claude**:
-   * Robot pixel-art salmón/terracota con animaciones, globo de texto personal (*"¡Hola Alejo!"*) y reacción al acariciar (*Long Press*).
-5. **Wi-Fi Captive Portal**:
-   * Red AP Hotspot `Companion-Setup` en `http://192.168.4.1` con memoria NVS no volátil para configurar el Wi-Fi desde el móvil.
+   * Token counter, session quota card, weekly quota card (`WEEKLY`), and status indicator in Anthropic Obsidian dark mode.
+4. **Claude AI Companion Mascot**:
+   * Animated pixel-art robot mascot with speech bubble (*"Hola Alejo!"*), facial expressions, and touch-petted heart reaction (`<3 PURR! <3`).
+5. **Wi-Fi Captive Portal & AP Web Server**:
+   * Hotspot AP `Companion-Setup` on `http://192.168.4.1` with NVS Flash memory storage for easy Wi-Fi configuration via mobile phone or laptop.
 
 ---
 
-## 🔌 Cableado (Wiring)
+## 🔌 Wiring Diagram
+
+For detailed wire color mappings and mounting instructions, see **[wiring_diagram.md](wiring_diagram.md)**.
 
 | ST7789 Pin | ESP32-C3 GPIO |
 |------------|---------------|
-| SCL/SCK    | 4             |
-| SDA/MOSI   | 6             |
-| CS         | 7             |
-| DC         | 2             |
-| RST        | 10            |
-| BLK        | 3             |
-| VCC        | 3V3           |
-| GND        | GND           |
+| SCL / SCK   | GPIO 4        |
+| SDA / MOSI  | GPIO 6        |
+| CS          | GPIO 7        |
+| DC          | GPIO 2        |
+| RST         | GPIO 10       |
+| BLK         | GPIO 3        |
+| VCC         | 3V3           |
+| GND         | GND           |
 
-| TTP223 Pin | ESP32-C3 GPIO |
-|------------|---------------|
-| OUT        | 5             |
-| VCC        | 3V3           |
-| GND        | GND           |
+| TTP223 Touch Pin | ESP32-C3 GPIO |
+|------------------|---------------|
+| OUT              | GPIO 5        |
+| VCC              | 3V3           |
+| GND              | GND           |
 
 ---
 
-## 🛠️ Configuración e Instalación
+## 🛠️ Build & Flash Instructions
 
-1. Clona este repositorio:
+1. Clone the repository:
    ```bash
    git clone https://github.com/Alejandrokbo/ESP32-C3-desktop-companion.git
    cd ESP32-C3-desktop-companion
    ```
-2. Copia el plantilla de configuración:
+2. Create your local secrets file:
    ```bash
    cp src/config.h.example src/config.h
    ```
-3. Rellena tus credenciales Wi-Fi o coordenadas en `src/config.h` (o déjalo vacio para usar el Portal Cautivo Wi-Fi).
-4. Compila y flashea con [PlatformIO](https://platformio.org/):
+3. Edit `src/config.h` with your Wi-Fi credentials or latitude/longitude coordinates (or leave empty to configure via Wi-Fi AP setup portal).
+4. Build and upload using [PlatformIO](https://platformio.org/):
    ```bash
    pio run -t upload
    ```
 
 ---
 
-## 🐍 Agente de PC (Python)
+## 🐍 PC Agent Script
 
-El agente de PC envía las métricas de uso de Claude Code al ESP32 a través del puerto serie USB:
+The PC side script streams live Claude Code usage metrics to the ESP32 over USB CDC Serial:
 
 ```bash
 cd pc-agent
@@ -78,6 +84,6 @@ python companion_agent.py COM5
 
 ---
 
-## 📄 Licencia
+## 📄 License
 
-MIT License © Alejandrokbo
+Distributed under the MIT License. See `LICENSE` for more information.
