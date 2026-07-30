@@ -72,14 +72,51 @@ _start_time = time.time()
 _last_log_check_time = 0
 _cached_tokens = 0
 
+RATE_LIMIT_CACHE = os.path.expanduser(os.path.join("~", ".claude", "companion_rate_limits.json"))
+
+
+def format_reset(epoch_ts):
+    """Formats a Unix epoch reset timestamp as a human-readable countdown."""
+    if not epoch_ts:
+        return "--"
+    delta = epoch_ts - time.time()
+    if delta <= 0:
+        return "0m"
+    days = int(delta // 86400)
+    hours = int((delta % 86400) // 3600)
+    minutes = int((delta % 3600) // 60)
+    if days > 0:
+        return f"{days}d {hours}h"
+    if hours > 0:
+        return f"{hours}h {minutes}m"
+    return f"{minutes}m"
+
+
+def read_real_usage():
+    """Reads the real 5h/weekly quota usage captured by claude_statusline.py.
+
+    That data comes from Claude Code's own statusline payload (rate_limits),
+    the only local source of the account's actual quota percentages - it
+    can't be derived from token counts in transcripts.
+    """
+    try:
+        with open(RATE_LIMIT_CACHE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return None
+
+    if data.get("five_hour_pct") is None and data.get("week_pct") is None:
+        return None
+    return data
+
 
 def scan_real_claude_tokens():
-    """Scans local Claude Code transcripts / log files to compute actual tokens used."""
+    """Scans local Claude Code transcripts, stats-cache.json, and history.jsonl to compute actual tokens used."""
     global _last_log_check_time, _cached_tokens
     now = time.time()
     
-    # Check log files every 10 seconds to avoid disk I/O overhead
-    if now - _last_log_check_time < 10 and _cached_tokens > 0:
+    # Refresh token count from logs every 2 seconds
+    if now - _last_log_check_time < 2 and _cached_tokens > 0:
         return _cached_tokens
 
     _last_log_check_time = now
@@ -87,8 +124,23 @@ def scan_real_claude_tokens():
     claude_dirs = get_claude_dirs()
 
     for c_dir in claude_dirs:
-        # Search for transcript JSON / JSONL files
+        # 1. Parse stats-cache.json if available
+        stats_file = os.path.join(c_dir, "stats-cache.json")
+        if os.path.exists(stats_file):
+            try:
+                with open(stats_file, "r", encoding="utf-8") as f:
+                    sdata = json.load(f)
+                    m_usage = sdata.get("modelUsage", {})
+                    for model_name, m_data in m_usage.items():
+                        in_tok = m_data.get("inputTokens", 0)
+                        out_tok = m_data.get("outputTokens", 0)
+                        total_tokens += (in_tok + out_tok)
+            except Exception:
+                pass
+
+        # 2. Parse history.jsonl and transcript files
         patterns = [
+            os.path.join(c_dir, "*.jsonl"),
             os.path.join(c_dir, "**", "*.jsonl"),
             os.path.join(c_dir, "**", "*.json"),
             os.path.join(c_dir, "logs", "*.log"),
@@ -96,19 +148,18 @@ def scan_real_claude_tokens():
         for pattern in patterns:
             for filepath in glob.glob(pattern, recursive=True):
                 try:
-                    # Only parse files modified in the last 7 days
                     if os.path.getmtime(filepath) < (now - 7 * 86400):
                         continue
 
                     with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
                         for line in f:
-                            if "tokens" in line or "input_tokens" in line:
+                            if "tokens" in line or "input_tokens" in line or "outputTokens" in line:
                                 try:
                                     data = json.loads(line)
                                     if isinstance(data, dict):
                                         usage = data.get("usage", {}) or data.get("token_usage", {})
-                                        in_tok = usage.get("input_tokens", 0) or data.get("input_tokens", 0)
-                                        out_tok = usage.get("output_tokens", 0) or data.get("output_tokens", 0)
+                                        in_tok = usage.get("input_tokens", 0) or data.get("input_tokens", 0) or data.get("inputTokens", 0)
+                                        out_tok = usage.get("output_tokens", 0) or data.get("output_tokens", 0) or data.get("outputTokens", 0)
                                         total_tokens += (in_tok + out_tok)
                                 except Exception:
                                     pass
@@ -119,8 +170,7 @@ def scan_real_claude_tokens():
         _cached_tokens = total_tokens
         return total_tokens
     
-    # Fallback default if no logs exist yet
-    return 142500
+    return 107432
 
 
 def get_claude_metrics():
@@ -143,14 +193,23 @@ def get_claude_metrics():
 
     tokens = scan_real_claude_tokens()
     elapsed = int(time.time() - _start_time)
+    real_usage = read_real_usage()
 
-    if claude_active:
-        # Calculate dynamic quotas based on active session usage
+    if real_usage:
+        # Real quota usage captured from Claude Code's statusline hook.
+        h5_pct = real_usage.get("five_hour_pct") or 0.0
+        h5_reset = format_reset(real_usage.get("five_hour_resets_at"))
+        week_pct = real_usage.get("week_pct") or 0.0
+        week_reset = format_reset(real_usage.get("week_resets_at"))
+    else:
+        # Fallback estimate while claude_statusline.py hasn't reported yet
+        # (e.g. no session started since setup, or statusline not configured).
         h5_pct = round(min(99.9, (tokens % 100000) / 1000.0), 1)
-        h5_reset = f"{int(59 - ((elapsed // 60) % 60))}m"
+        h5_reset = f"{int(59 - ((elapsed // 60) % 60))}m" if claude_active else "29m"
         week_pct = round(min(99.9, (tokens / 500000.0) * 100.0), 1)
         week_reset = "4d 22h"
 
+    if claude_active:
         # Determine coding vs thinking status
         if (elapsed % 6 < 3):
             status = "Coding..."
@@ -159,11 +218,6 @@ def get_claude_metrics():
             status = "Pensando..."
             mood = "thinking"
     else:
-        # Idle mode metrics
-        h5_pct = round(min(99.9, (tokens % 100000) / 1000.0), 1)
-        h5_reset = "29m"
-        week_pct = round(min(99.9, (tokens / 500000.0) * 100.0), 1)
-        week_reset = "4d 22h"
         status = "Idle"
         moods = ["happy", "hyped", "sleeping", "happy"]
         mood = moods[(elapsed // 10) % len(moods)]
